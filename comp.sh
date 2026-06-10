@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-source comp-env.sh
-
 rm -rf build
 
 cmake -B build \
