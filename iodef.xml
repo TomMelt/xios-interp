@@ -7,23 +7,16 @@
 
     <domain_definition>
       <domain id="era5" name="dim" ni_glo="5" nj_glo="3" type="rectilinear" />
-      <domain id="era5Interp" name="dim" ni_glo="10" nj_glo="6" type="rectilinear" />
     </domain_definition>
 
     <grid_definition>
       <grid id="HGridEra5">
         <domain domain_ref="era5"/>
       </grid>
-      <grid id="HGridEra5Interp" name="HGridEra5Interp">
-        <domain domain_ref="era5Interp">
-          <interpolate_domain/>
-        </domain>
-      </grid>
     </grid_definition>
 
     <field_definition>
       <field id="tairEra5" grid_ref="HGridEra5" />
-      <field id="tairEra5Interp" field_ref="tairEra5" grid_ref="HGridEra5Interp" />
     </field_definition>
 
   </context>
