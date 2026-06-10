@@ -188,8 +188,8 @@ int main(int argc, char* argv[])
         cxios_read_data_k82(
             inputFieldId.c_str(), inputFieldId.size(), data.data(), X_DIM, Y_DIM);
 
-        // cxios_read_data_k82(
-        //     baseFieldInterpId.c_str(), baseFieldInterpId.size(), dataInterp.data(), X_DIM_INTERP, Y_DIM_INTERP);
+        cxios_read_data_k82(
+            baseFieldInterpId.c_str(), baseFieldInterpId.size(), dataInterp.data(), X_DIM_INTERP, Y_DIM_INTERP);
 
         if (rank == 0) {
             printf("\n=== Timestep %d ===\n", ts);
