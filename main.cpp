@@ -47,6 +47,8 @@ int main(int argc, char* argv[])
     cxios_context_initialize(contextId.c_str(), contextId.size(), &clientComm_F);
 
     /* ---- 2. Set up domain local geometry (1 rank = full domain) ---- */
+    // The domain "era5" is already defined in iodef.xml with ni_glo=5, nj_glo=3.
+    // We only need to set the local partitioning and coordinate values.
 
     std::string domainId = "era5";
     xios::CDomain* domain;
@@ -84,12 +86,12 @@ int main(int argc, char* argv[])
     cxios_set_calendar_wrapper_timestep(calendar, timestep);
     cxios_update_calendar_timestep(calendar);
 
-    /* ---- 4. Set up the grid (link domain to grid defined in XML) ---- */
+    /* ---- 4. Get the grid handle (already fully defined in XML) ---- */
+    // Do NOT add the domain again — it's already linked via iodef.xml:
+    //   <grid id="HGridEra5"><domain domain_ref="era5"/></grid>
+    // The grid is referenced by the field in the next section via gridId.
 
     std::string gridId = "HGridEra5";
-    xios::CGrid* grid;
-    cxios_grid_handle_create(&grid, gridId.c_str(), gridId.size());
-    cxios_xml_tree_add_domaintogrid(grid, &domain, domainId.c_str(), domainId.size());
 
     /* ---- 5. Create an input field and link it to the base field ---- */
 
