@@ -15,7 +15,7 @@
     </axis_definition>
 
     <domain_definition>
-      <domain id="era5" ni_glo="5" nj_glo="3" type="rectilinear" />
+      <domain id="era5" name="dim" ni_glo="5" nj_glo="3" type="rectilinear" />
     </domain_definition>
 
     <grid_definition>
