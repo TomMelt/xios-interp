@@ -29,6 +29,11 @@ if(NOT NETCDF_FOUND)
     message(FATAL_ERROR "netcdf not found")
 endif()
 
+find_program(NCGEN_EXECUTABLE NAMES ncgen)
+if(NOT NCGEN_EXECUTABLE)
+    message(FATAL_ERROR "ncgen not found")
+endif()
+
 # ---- Fortran runtime (needed by XIOS) ----
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(FORTRAN_RUNTIME_LIBS "-lgfortran -lmpi_mpifh")
@@ -65,16 +70,23 @@ target_link_libraries(xios_read PRIVATE
     ${FORTRAN_RUNTIME_LIBS}
 )
 
+# ---- Generate NetCDF file from CDL ----
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xios_test_era5_forcing.nc
+    COMMAND ${NCGEN_EXECUTABLE} -o ${CMAKE_CURRENT_BINARY_DIR}/xios_test_era5_forcing.nc
+        ${CMAKE_CURRENT_SOURCE_DIR}/xios_test_era5_forcing.cdl
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/xios_test_era5_forcing.cdl
+    COMMENT "Generating xios_test_era5_forcing.nc from CDL"
+)
+
+# Ensure the nc file is generated before the executable is considered "ready"
+add_custom_target(generate_nc_files DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/xios_test_era5_forcing.nc)
+add_dependencies(xios_read generate_nc_files)
+
 # ---- Copy data files into build dir ----
 add_custom_command(TARGET xios_read POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/iodef.xml
         $<TARGET_FILE_DIR:xios_read>
     COMMENT "Copying iodef.xml to build dir"
-)
-add_custom_command(TARGET xios_read POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/xios_test_era5_forcing.nc
-        $<TARGET_FILE_DIR:xios_read>
-    COMMENT "Copying xios_test_era5_forcing.nc to build dir"
 )
