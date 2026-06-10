@@ -26,6 +26,8 @@
 
 static const int X_DIM = 5;
 static const int Y_DIM = 3;
+static const int X_DIM_INTERP = 10;
+static const int Y_DIM_INTERP = 6;
 static const int N_TIMESTEPS = 3;
 
 int main(int argc, char* argv[])
@@ -73,6 +75,30 @@ int main(int argc, char* argv[])
         latvalue[j] = static_cast<double>(j);
     cxios_set_domain_latvalue_1d(domain, latvalue.data(), &nj);
 
+    /* ---- 2b. Set up interpolation domain geometry ---- */
+    std::string domainInterpId = "era5Interp";
+    xios::CDomain* domainInterp;
+    cxios_domain_handle_create(&domainInterp, domainInterpId.c_str(), domainInterpId.size());
+
+    int niInterp = X_DIM_INTERP;
+    int njInterp = Y_DIM_INTERP;
+    int ibeginInterp = 0;
+    int jbeginInterp = 0;
+    cxios_set_domain_ni(domainInterp, niInterp);
+    cxios_set_domain_nj(domainInterp, njInterp);
+    cxios_set_domain_ibegin(domainInterp, ibeginInterp);
+    cxios_set_domain_jbegin(domainInterp, jbeginInterp);
+
+    std::vector<double> lonvalueInterp(niInterp);
+    for (int i = 0; i < niInterp; i++)
+        lonvalueInterp[i] = static_cast<double>(i) * 0.5;
+    cxios_set_domain_lonvalue_1d(domainInterp, lonvalueInterp.data(), &niInterp);
+
+    std::vector<double> latvalueInterp(njInterp);
+    for (int j = 0; j < njInterp; j++)
+        latvalueInterp[j] = static_cast<double>(j) * 0.5;
+    cxios_set_domain_latvalue_1d(domainInterp, latvalueInterp.data(), &njInterp);
+
     /* ---- 3. Set up calendar ---- */
 
     xios::CCalendarWrapper* calendar;
@@ -114,6 +140,15 @@ int main(int argc, char* argv[])
     std::string fieldOperation = "instant";
     cxios_set_field_operation(inputField, fieldOperation.c_str(), fieldOperation.size());
 
+    /* ---- 5b. Create an input field for the interpolated field ---- */
+
+    std::string baseFieldInterpId = "tairEra5Interp";
+
+    xios::CField* inputFieldInterp;
+    cxios_xml_tree_add_field(fieldGroup, &inputFieldInterp, baseFieldInterpId.c_str(), baseFieldInterpId.size());
+    cxios_set_field_read_access(inputFieldInterp, true);
+    cxios_set_field_operation(inputFieldInterp, fieldOperation.c_str(), fieldOperation.size());
+
     /* ---- 6. Create a file for reading and attach the input field ---- */
 
     std::string fileGroupId = "file_definition";
@@ -138,6 +173,7 @@ int main(int argc, char* argv[])
 
     // Attach the input field to the file
     cxios_xml_tree_add_fieldtofile(file, &inputField, inputFieldId.c_str(), inputFieldId.size());
+    cxios_xml_tree_add_fieldtofile(file, &inputFieldInterp, baseFieldInterpId.c_str(), baseFieldInterpId.size());
 
     /* ---- 7. Close context definition ---- */
 
@@ -146,10 +182,14 @@ int main(int argc, char* argv[])
     /* ---- 8. Read tair at each timestep ---- */
 
     std::vector<double> data(Y_DIM * X_DIM);
+    std::vector<double> dataInterp(Y_DIM_INTERP * X_DIM_INTERP);
 
     for (int ts = 0; ts < N_TIMESTEPS; ts++) {
         cxios_read_data_k82(
             inputFieldId.c_str(), inputFieldId.size(), data.data(), X_DIM, Y_DIM);
+
+        // cxios_read_data_k82(
+        //     baseFieldInterpId.c_str(), baseFieldInterpId.size(), dataInterp.data(), X_DIM_INTERP, Y_DIM_INTERP);
 
         if (rank == 0) {
             printf("\n=== Timestep %d ===\n", ts);
@@ -157,6 +197,13 @@ int main(int argc, char* argv[])
             for (int j = 0; j < Y_DIM; j++) {
                 for (int i = 0; i < X_DIM; i++) {
                     printf("%.1f ", data[j * X_DIM + i]);
+                }
+                printf("\n");
+            }
+            printf("Interpolated (10x6):\n");
+            for (int j = 0; j < Y_DIM_INTERP; j++) {
+                for (int i = 0; i < X_DIM_INTERP; i++) {
+                    printf("%.1f ", dataInterp[j * X_DIM_INTERP + i]);
                 }
                 printf("\n");
             }
