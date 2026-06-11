@@ -82,6 +82,9 @@ void cxios_set_interpolate_domain_mode(
 void cxios_get_interpolate_domain_mode(xios::CInterpolateDomain* hdl, char* mode, int mode_size);
 void cxios_set_interpolate_domain_order(xios::CInterpolateDomain* hdl, int order);
 void cxios_get_interpolate_domain_order(xios::CInterpolateDomain* hdl, int* order);
+void cxios_set_interpolate_domain_renormalize(xios::CInterpolateDomain* hdl, bool renormalize);
+void cxios_get_interpolate_domain_renormalize(xios::CInterpolateDomain* hdl, bool* renormalize);
+bool cxios_is_defined_interpolate_domain_renormalize(xios::CInterpolateDomain* hdl);
 void cxios_xml_tree_add_interpolatedomaintodomain(xios::CDomain* parent,
     xios::CInterpolateDomain** child, const char* child_id, int child_id_size);
 

@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     int rank = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /* ---- 1. Initialize XIOS client and context ---- */
+    /* ---- Initialize XIOS client and context ---- */
 
     MPI_Fint nullComm_F = MPI_Comm_c2f(MPI_COMM_NULL);
     MPI_Fint clientComm_F;
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     std::string contextId = "nextSIM-DG";
     cxios_context_initialize(contextId.c_str(), contextId.size(), &clientComm_F);
 
-    /* ---- 2. Set up domain local geometry (1 rank = full domain) ---- */
+    /* ---- Set up domain local geometry (1 rank = full domain) ---- */
     // The domain "era5" is already defined in iodef.xml with ni_glo=5, nj_glo=3.
     // We only need to set the local partitioning and coordinate values.
 
@@ -56,12 +56,17 @@ int main(int argc, char* argv[])
     xios::CDomain* domain;
     cxios_domain_handle_create(&domain, domainId.c_str(), domainId.size());
 
+    std::string domainType = "rectilinear";
+    cxios_set_domain_type(domain, domainType.c_str(), domainType.size());
+
     int ni = X_DIM;
     int nj = Y_DIM;
     int ibegin = 0;
     int jbegin = 0;
     cxios_set_domain_ni(domain, ni);
     cxios_set_domain_nj(domain, nj);
+    cxios_set_domain_ni_glo(domain, ni);
+    cxios_set_domain_nj_glo(domain, nj);
     cxios_set_domain_ibegin(domain, ibegin);
     cxios_set_domain_jbegin(domain, jbegin);
 
@@ -75,10 +80,13 @@ int main(int argc, char* argv[])
         latvalue[j] = static_cast<double>(j);
     cxios_set_domain_latvalue_1d(domain, latvalue.data(), &nj);
 
-    /* ---- 2b. Set up interpolation domain geometry ---- */
+    /* ---- Set up interpolation domain geometry ---- */
     std::string domainInterpId = "era5Interp";
     xios::CDomain* domainInterp;
     cxios_domain_handle_create(&domainInterp, domainInterpId.c_str(), domainInterpId.size());
+
+    std::string domainInterpType = "rectilinear";
+    cxios_set_domain_type(domainInterp, domainInterpType.c_str(), domainInterpType.size());
 
     int niInterp = X_DIM_INTERP;
     int njInterp = Y_DIM_INTERP;
@@ -86,6 +94,8 @@ int main(int argc, char* argv[])
     int jbeginInterp = 0;
     cxios_set_domain_ni(domainInterp, niInterp);
     cxios_set_domain_nj(domainInterp, njInterp);
+    cxios_set_domain_ni_glo(domainInterp, niInterp);
+    cxios_set_domain_nj_glo(domainInterp, njInterp);
     cxios_set_domain_ibegin(domainInterp, ibeginInterp);
     cxios_set_domain_jbegin(domainInterp, jbeginInterp);
 
@@ -99,7 +109,15 @@ int main(int argc, char* argv[])
         latvalueInterp[j] = static_cast<double>(j) * 0.5;
     cxios_set_domain_latvalue_1d(domainInterp, latvalueInterp.data(), &njInterp);
 
-    /* ---- 3. Set up calendar ---- */
+    /* ---- Set up interpolation order and renormalization ---- */
+    xios::CInterpolateDomain* interpDomain;
+    std::string interpId = "interpolate";
+    cxios_xml_tree_add_interpolatedomaintodomain(
+        domainInterp, &interpDomain, interpId.c_str(), interpId.size());
+    cxios_set_interpolate_domain_order(interpDomain, 1);
+    cxios_set_interpolate_domain_renormalize(interpDomain, false);
+
+    /* ---- Set up calendar ---- */
 
     xios::CCalendarWrapper* calendar;
     cxios_get_current_calendar_wrapper(&calendar);
@@ -112,35 +130,31 @@ int main(int argc, char* argv[])
     cxios_set_calendar_wrapper_timestep(calendar, timestep);
     cxios_update_calendar_timestep(calendar);
 
-    /* ---- 4. Get the grid handle (already fully defined in XML) ---- */
-    // Do NOT add the domain again — it's already linked via iodef.xml:
-    //   <grid id="HGridEra5"><domain domain_ref="era5"/></grid>
-    // The grid is referenced by the field in the next section via gridId.
 
-    std::string gridId = "HGridEra5";
-
-    /* ---- 5. Create an input field and link it to the base field ---- */
+    /* ---- Create an input field and link it to the base field ---- */
 
     std::string fieldGroupId = "field_definition";
-    std::string inputFieldId = "tairEra5_input";
-    std::string baseFieldId = "tairEra5";
+    std::string inputFieldId = "tairEra5";
     std::string netcdfVarName = "tair";
+    std::string gridId = "HGridEra5"; // already defined in iodef.xml
 
-    xios::CFieldGroup* fieldGroup;
-    xios::CField* inputField;
+    xios::CFieldGroup* fieldGroup; // create field group object for manipulating fields at run-time
     cxios_fieldgroup_handle_create(&fieldGroup, fieldGroupId.c_str(), fieldGroupId.size());
+
+    xios::CField* inputField; // create object that links to field tairEra5
     cxios_xml_tree_add_field(fieldGroup, &inputField, inputFieldId.c_str(), inputFieldId.size());
 
-    // Link input field to the base field and set the NetCDF variable name
-    cxios_set_field_field_ref(inputField, baseFieldId.c_str(), baseFieldId.size());
+    // link tairEra5 to HGridEra5
     cxios_set_field_grid_ref(inputField, gridId.c_str(), gridId.size());
+    // link tairEra5 to its netcdf name
     cxios_set_field_name(inputField, netcdfVarName.c_str(), netcdfVarName.size());
-    cxios_set_field_read_access(inputField, true);
 
+    // set read access and operation
+    cxios_set_field_read_access(inputField, true);
     std::string fieldOperation = "instant";
     cxios_set_field_operation(inputField, fieldOperation.c_str(), fieldOperation.size());
 
-    /* ---- 5b. Create an input field for the interpolated field ---- */
+    /* ---- Create an input field for the interpolated field ---- */
 
     std::string baseFieldInterpId = "tairEra5Interp";
     std::string gridInterpId = "HGridEra5Interp";
@@ -150,7 +164,7 @@ int main(int argc, char* argv[])
     cxios_set_field_field_ref(inputFieldInterp, inputFieldId.c_str(), inputFieldId.size());
     cxios_set_field_grid_ref(inputFieldInterp, gridInterpId.c_str(), gridInterpId.size());
 
-    /* ---- 6. Create a file for reading and attach the input field ---- */
+    /* ---- Create a file for reading and attach the input field ---- */
 
     std::string fileGroupId = "file_definition";
     std::string fileId = "era5_forcing";
@@ -175,11 +189,11 @@ int main(int argc, char* argv[])
     // Attach the input field to the file
     cxios_xml_tree_add_fieldtofile(file, &inputField, inputFieldId.c_str(), inputFieldId.size());
 
-    /* ---- 7. Close context definition ---- */
+    /* ---- Close context definition ---- */
 
     cxios_context_close_definition();
 
-    /* ---- 8. Read tair at each timestep ---- */
+    /* ---- Read tair at each timestep ---- */
 
     std::vector<double> data(Y_DIM * X_DIM);
     std::vector<double> dataInterp(Y_DIM_INTERP * X_DIM_INTERP);
@@ -215,7 +229,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    /* ---- 9. Finalize ---- */
+    /* ---- Finalize ---- */
 
     cxios_context_finalize();
     cxios_finalize();
