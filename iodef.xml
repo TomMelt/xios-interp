@@ -23,7 +23,6 @@
 
     <field_definition>
       <field id="tairEra5" grid_ref="HGridEra5" />
-      <field id="tairEra5Interp" field_ref="tairEra5" grid_ref="HGridEra5Interp" />
     </field_definition>
 
   </context>

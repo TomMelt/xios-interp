@@ -143,11 +143,12 @@ int main(int argc, char* argv[])
     /* ---- 5b. Create an input field for the interpolated field ---- */
 
     std::string baseFieldInterpId = "tairEra5Interp";
+    std::string gridInterpId = "HGridEra5Interp";
 
     xios::CField* inputFieldInterp;
     cxios_xml_tree_add_field(fieldGroup, &inputFieldInterp, baseFieldInterpId.c_str(), baseFieldInterpId.size());
-    cxios_set_field_read_access(inputFieldInterp, true);
-    cxios_set_field_operation(inputFieldInterp, fieldOperation.c_str(), fieldOperation.size());
+    cxios_set_field_field_ref(inputFieldInterp, inputFieldId.c_str(), inputFieldId.size());
+    cxios_set_field_grid_ref(inputFieldInterp, gridInterpId.c_str(), gridInterpId.size());
 
     /* ---- 6. Create a file for reading and attach the input field ---- */
 
@@ -173,7 +174,6 @@ int main(int argc, char* argv[])
 
     // Attach the input field to the file
     cxios_xml_tree_add_fieldtofile(file, &inputField, inputFieldId.c_str(), inputFieldId.size());
-    cxios_xml_tree_add_fieldtofile(file, &inputFieldInterp, baseFieldInterpId.c_str(), baseFieldInterpId.size());
 
     /* ---- 7. Close context definition ---- */
 
@@ -211,7 +211,7 @@ int main(int argc, char* argv[])
 
         /* Advance calendar by 1 hour for next timestep */
         if (ts < N_TIMESTEPS - 1) {
-            cxios_update_calendar(1);
+            cxios_update_calendar(ts+1);
         }
     }
 
